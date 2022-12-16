@@ -1,5 +1,5 @@
 import * as sha256 from 'fast-sha256'
-import * as sodium from './libsodium'
+import * as sodium from 'libsodium-wrappers'
 import {
   arrayBufferToBase64,
   arrayBufferToHexString,
@@ -60,8 +60,37 @@ export const encrypt = async ({
   plaintext: Utf8String
 }): Promise<EncryptedMessage> => {
   const nonce = await generateRandomKey(Defaults.EncryptionNonceLength)
+  return encrypt_v1({key, plaintext, nonce})
+}
 
+export const encrypt_v1 = async ({
+  key,
+  plaintext,
+  nonce,
+}: {
+  key: HexString
+  plaintext: Utf8String
+  nonce: string
+}): Promise<EncryptedMessage> => {
   const ciphertext = await xChaChaEncrypt({
+    key,
+    plaintext,
+    nonce,
+  })
+
+  return [Defaults.Version, nonce, ciphertext].join(STRING_PARTITION)
+}
+
+export const encrypt_v2 = async ({
+  key,
+  plaintext,
+  nonce,
+}: {
+  key: HexString
+  plaintext: Utf8String
+  nonce: string
+}): Promise<EncryptedMessage> => {
+  const ciphertext = await xChaChaEncrypt_v2({
     key,
     plaintext,
     nonce,
@@ -227,6 +256,15 @@ const xChaChaEncrypt = async ({
     throw Error('Nonce must be 48 bytes')
   }
 
+  // console.log('sodium.crypto_aead_xchacha20poly1305_ietf_encrypt:')
+  // console.log(String(sodium.default.crypto_aead_xchacha20poly1305_ietf_encrypt))
+  // console.log(String(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt))
+  // console.log(sodium.crypto_aead_xchacha20poly1305_ietf_encrypt)
+
+  // if (!sodium.crypto_aead_xchacha20poly1305_ietf_encrypt) {
+  //   debugger
+  // }
+
   const arrayBuffer = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
     plaintext,
     null,
@@ -236,6 +274,31 @@ const xChaChaEncrypt = async ({
   )
 
   return arrayBufferToBase64(arrayBuffer)
+}
+
+const xChaChaEncrypt_v2 = async ({
+  key,
+  plaintext,
+  nonce,
+}: {
+  key: HexString
+  plaintext: Utf8String
+  nonce: HexString
+}): Promise<Base64String> => {
+  await sodium.ready
+
+  if (nonce.length !== 48) {
+    throw Error('Nonce must be 48 bytes')
+  }
+
+  return sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    plaintext,
+    null,
+    null,
+    await hexStringToArrayBuffer(nonce),
+    await hexStringToArrayBuffer(key),
+    'base64',
+  )
 }
 
 const xChaChaEncryptBlob = async ({

@@ -8,6 +8,7 @@ import {
   to_hex,
   to_string,
 } from './libsodium'
+import getRandomValues from 'get-random-values'
 
 const BASE64_VARIANT = base64_variants.ORIGINAL
 
@@ -51,7 +52,6 @@ export const generateRandomUint8Array = async (length: number): Promise<Uint8Arr
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-export const getRandomValues = require('get-random-values')
 
 export const concatUint8Arrays = (...arrays: Uint8Array[]): Uint8Array => {
   const totalLength = arrays.reduce((acc, array) => acc + array.length, 0)
